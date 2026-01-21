@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#243b53" />
 
-  <!-- Leaflet CSS (map library) -->
+  <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -17,8 +17,20 @@
     crossorigin=""
   />
 
+  <!-- Your stylesheet -->
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Leaflet JS (must load BEFORE main.js) -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Your script (deferred so Leaflet loads first) -->
+  <script defer src="main.js"></script>
 </head>
+
 <body>
   <header>
     <h1>Foal Field Weather</h1>
@@ -40,6 +52,7 @@
             Rain (1h): <span id="rain-1h">0</span> mm
           </p>
         </div>
+
         <div class="icon-and-alert">
           <div id="weather-icon" class="weather-icon">⛅</div>
           <div id="rug-advice" class="rug-advice">Rugging advice loading…</div>
@@ -49,9 +62,7 @@
 
     <section id="alerts">
       <h2>Weather alerts</h2>
-      <div id="alerts-list">
-        <p>No alerts loaded yet…</p>
-      </div>
+      <div id="alerts"></div>
     </section>
 
     <section id="map-section">
@@ -60,6 +71,7 @@
         Colours show severity; icons show main weather type.
       </p>
       <div id="map"></div>
+
       <div class="legend">
         <span class="legend-item legend-low">Mild</span>
         <span class="legend-item legend-medium">Uncomfortable</span>
@@ -70,21 +82,12 @@
 
     <section id="forecast">
       <h2>Next 12 hours</h2>
-      <div id="hourly-forecast" class="forecast-grid"></div>
+      <div id="hourly" class="forecast-grid"></div>
     </section>
   </main>
 
   <footer>
     <p>Data from OpenWeather. Use as guidance, not a substitute for checking your foals in person.</p>
   </footer>
-
-  <!-- Leaflet JS -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
-
-  <script src="main.js"></script>
 </body>
 </html>
