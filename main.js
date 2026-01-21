@@ -6,7 +6,7 @@ const OPENWEATHER_API_KEY = "4bc4ece07478293baab440e53b9c5a45";
 
 const CURRENT_URL = `https://api.openweathermap.org/data/2.5/weather?lat=${FIELD_LAT}&lon=${FIELD_LON}&units=metric&appid=${OPENWEATHER_API_KEY}`;
 const FORECAST_URL = `https://api.openweathermap.org/data/2.5/forecast?lat=${FIELD_LAT}&lon=${FIELD_LON}&units=metric&appid=${OPENWEATHER_API_KEY}`;
-const UK_ALERTS_URL = "https://www.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK";
+const ONECALL_URL = `https://api.openweathermap.org/data/3.0/onecall?lat=${FIELD_LAT}&lon=${FIELD_LON}&units=metric&appid=${OPENWEATHER_API_KEY}`;
 
 
 // --- MAP SETUP ---
@@ -71,7 +71,7 @@ function getRugAdvice({ temp, feels_like, wind_speed, rain, snow }) {
 }
 
 
-// --- ALERTS ---
+// --- ALERT RENDERING ---
 function renderAlerts(alerts) {
   const container = document.getElementById("alerts");
   container.innerHTML = "";
@@ -84,7 +84,17 @@ function renderAlerts(alerts) {
   alerts.forEach(a => {
     const div = document.createElement("div");
     div.className = "alert";
-    div.innerHTML = `<strong>${a.title}</strong><br>${a.description}`;
+
+    const start = new Date(a.start * 1000).toLocaleString();
+    const end = new Date(a.end * 1000).toLocaleString();
+
+    div.innerHTML = `
+      <strong>${a.event}</strong><br>
+      <em>Issued by ${a.sender_name}</em><br>
+      <p>${a.description}</p>
+      <p><small>${start} → ${end}</small></p>
+    `;
+
     container.appendChild(div);
   });
 }
@@ -127,17 +137,10 @@ async function loadWeather() {
     const forecastRes = await fetch(FORECAST_URL);
     const forecast = await forecastRes.json();
 
-    // Fetch UK alerts (RSS feed)
-    const alertsRes = await fetch(UK_ALERTS_URL);
-    const alertsText = await alertsRes.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(alertsText, "text/xml");
-    const items = xml.querySelectorAll("item");
-    const alerts = Array.from(items).map(item => ({
-      title: item.querySelector("title")?.textContent || "Alert",
-      description: item.querySelector("description")?.textContent || "",
-      link: item.querySelector("link")?.textContent || ""
-    }));
+    // Fetch alerts (One Call API)
+    const onecallRes = await fetch(ONECALL_URL);
+    const onecall = await onecallRes.json();
+    const alerts = onecall.alerts || [];
 
 
     // --- Update UI ---
