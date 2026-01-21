@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Foal Field Weather – WR3–WR9</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#243b53" />
+
+  <!-- Leaflet CSS (map library) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Foal Field Weather</h1>
+    <p>Live conditions between WR3 7SB and WR9 7JE</p>
+  </header>
+
+  <main>
+    <section id="current">
+      <div class="current-main">
+        <div>
+          <h2>Now</h2>
+          <p id="location-name">Loading location…</p>
+          <p class="temp"><span id="temp">--</span>°C</p>
+          <p id="description">Loading…</p>
+          <p class="feels">Feels like <span id="feels-like">--</span>°C</p>
+          <p class="details">
+            Wind: <span id="wind-speed">--</span> mph ·
+            Gusts: <span id="wind-gust">--</span> mph ·
+            Rain (1h): <span id="rain-1h">0</span> mm
+          </p>
+        </div>
+        <div class="icon-and-alert">
+          <div id="weather-icon" class="weather-icon">⛅</div>
+          <div id="rug-advice" class="rug-advice">Rugging advice loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="alerts">
+      <h2>Weather alerts</h2>
+      <div id="alerts-list">
+        <p>No alerts loaded yet…</p>
+      </div>
+    </section>
+
+    <section id="map-section">
+      <h2>Field weather map</h2>
+      <p class="map-note">
+        Colours show severity; icons show main weather type.
+      </p>
+      <div id="map"></div>
+      <div class="legend">
+        <span class="legend-item legend-low">Mild</span>
+        <span class="legend-item legend-medium">Uncomfortable</span>
+        <span class="legend-item legend-high">Harsh</span>
+        <span class="legend-item legend-extreme">Extreme</span>
+      </div>
+    </section>
+
+    <section id="forecast">
+      <h2>Next 12 hours</h2>
+      <div id="hourly-forecast" class="forecast-grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Data from OpenWeather. Use as guidance, not a substitute for checking your foals in person.</p>
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <script src="main.js"></script>
+</body>
+</html>
