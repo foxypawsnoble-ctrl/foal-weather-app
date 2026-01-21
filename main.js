@@ -8,22 +8,115 @@ const CURRENT_URL = `https://api.openweathermap.org/data/2.5/weather?lat=${FIELD
 const FORECAST_URL = `https://api.openweathermap.org/data/2.5/forecast?lat=${FIELD_LAT}&lon=${FIELD_LON}&units=metric&appid=${OPENWEATHER_API_KEY}`;
 const UK_ALERTS_URL = "https://www.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK";
 
-// Simple rugging thresholds (you can tweak these)
+
+// --- MAP SETUP ---
+let map;
+let severityCircle;
+
+function initMap() {
+  map = L.map("map").setView([FIELD_LAT, FIELD_LON], 13);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
+
+  severityCircle = L.circle([FIELD_LAT, FIELD_LON], {
+    radius: 300,
+    color: "#888",
+    fillColor: "#888",
+    fillOpacity: 0.5,
+  }).addTo(map);
+}
+
+
+// --- WEATHER ICONS ---
+function weatherIconFromCode(code, isNight) {
+  if (code >= 200 && code < 300) return "⛈️";
+  if (code >= 300 && code < 500) return "🌦️";
+  if (code >= 500 && code < 600) return "🌧️";
+  if (code >= 600 && code < 700) return "❄️";
+  if (code >= 700 && code < 800) return "🌫️";
+  if (code === 800) return isNight ? "🌕" : "☀️";
+  if (code > 800) return "☁️";
+  return "🌡️";
+}
+
+
+// --- RUGGING ADVICE ---
 const RUG_RULES = {
-  mild: {
-    minTemp: 8, // above this, usually no rug needed
-  },
-  cool: {
-    minTemp: 4, // 4–8°C, maybe light rug if wet/windy
-  },
-  cold: {
-    minTemp: -2, // -2–4°C, likely rug, especially foals
-  },
-  veryCold: {
-    minTemp: -100, // below -2°C
-  },
+  mild: { minTemp: 8 },
+  cool: { minTemp: 4 },
+  cold: { minTemp: -2 },
+  veryCold: { minTemp: -100 },
 };
 
+function getRugAdvice({ temp, feels_like, wind_speed, rain, snow }) {
+  const wet = rain || snow ? true : false;
+
+  if (feels_like >= RUG_RULES.mild.minTemp && !wet) {
+    return { advice: "No rug needed", level: "normal" };
+  }
+
+  if (feels_like >= RUG_RULES.cool.minTemp) {
+    return wet
+      ? { advice: "Light rug if foals are wet", level: "caution" }
+      : { advice: "Light rug optional", level: "normal" };
+  }
+
+  if (feels_like >= RUG_RULES.cold.minTemp) {
+    return { advice: "Medium rug recommended", level: "caution" };
+  }
+
+  return { advice: "Heavy rug recommended", level: "danger" };
+}
+
+
+// --- ALERTS ---
+function renderAlerts(alerts) {
+  const container = document.getElementById("alerts");
+  container.innerHTML = "";
+
+  if (!alerts.length) {
+    container.innerHTML = "<p>No active weather alerts.</p>";
+    return;
+  }
+
+  alerts.forEach(a => {
+    const div = document.createElement("div");
+    div.className = "alert";
+    div.innerHTML = `<strong>${a.title}</strong><br>${a.description}`;
+    container.appendChild(div);
+  });
+}
+
+
+// --- SEVERITY COLOUR ---
+function severityColor(score) {
+  if (score < 1.5) return "#4CAF50";   // green
+  if (score < 3) return "#FFC107";     // amber
+  return "#F44336";                    // red
+}
+
+
+// --- HOURLY FORECAST ---
+function renderHourly(hours) {
+  const container = document.getElementById("hourly");
+  container.innerHTML = "";
+
+  hours.forEach(h => {
+    const time = new Date(h.dt * 1000).getHours();
+    const temp = Math.round(h.main.temp);
+    const icon = weatherIconFromCode(h.weather[0].id, false);
+
+    const div = document.createElement("div");
+    div.className = "hour-block";
+    div.innerHTML = `<strong>${time}:00</strong><br>${icon}<br>${temp}°C`;
+    container.appendChild(div);
+  });
+}
+
+
+// --- MAIN WEATHER LOADER ---
 async function loadWeather() {
   try {
     // Fetch current weather
@@ -46,9 +139,8 @@ async function loadWeather() {
       link: item.querySelector("link")?.textContent || ""
     }));
 
-    // --- Update UI ---
 
-    // Current weather
+    // --- Update UI ---
     document.getElementById("location-name").textContent = "Foal field (WR3–WR9 area)";
     document.getElementById("temp").textContent = Math.round(current.main.temp);
     document.getElementById("feels-like").textContent = Math.round(current.main.feels_like);
@@ -70,6 +162,7 @@ async function loadWeather() {
     const iconChar = weatherIconFromCode(current.weather[0].id, isNight);
     document.getElementById("weather-icon").textContent = iconChar;
 
+
     // Rugging advice
     const rug = getRugAdvice({
       temp: current.main.temp,
@@ -85,8 +178,10 @@ async function loadWeather() {
     if (rug.level === "caution") rugEl.classList.add("caution");
     if (rug.level === "danger") rugEl.classList.add("danger");
 
+
     // Alerts
     renderAlerts(alerts);
+
 
     // Severity map
     const feels = current.main.feels_like;
@@ -103,9 +198,10 @@ async function loadWeather() {
 
     severityCircle.setStyle({ color, fillColor: color });
 
-    // Hourly forecast (next 12 hours from 3‑hour blocks)
-    const nextHours = forecast.list.slice(0, 4); // 4 × 3h = 12h
-    renderHourly(nextHours, 0);
+
+    // Hourly forecast (next 12 hours)
+    const nextHours = forecast.list.slice(0, 4);
+    renderHourly(nextHours);
 
   } catch (err) {
     console.error(err);
@@ -114,10 +210,9 @@ async function loadWeather() {
 }
 
 
-// --- Init ---
+// --- INIT ---
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
   loadWeather();
-  // Refresh every 10 minutes
   setInterval(loadWeather, 10 * 60 * 1000);
 });
