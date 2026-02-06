@@ -1,53 +1,61 @@
-const CACHE_NAME = "foal-weather-cache-v1";
-const ASSETS = [
-  "/",
-  "/index.html",
-  "/styles.css",
-  "/main.js",
-  "/manifest.json"
-  // Icons will be cached on first use
-];
+/* Basic PWA service worker: app shell + Open-Meteo caching */
+const VERSION = "wr3-weather-flattened-v2-map-alerts";
+const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest", "./pwa-192.png", "./pwa-512.png"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
+  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(APP_SHELL)));
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => (k !== VERSION ? caches.delete(k) : null)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
+  const req = event.request;
+  const url = new URL(req.url);
 
-  // Network-first for API calls, cache-first for static assets
-  if (url.pathname.includes("onecall")) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
-  } else {
-    event.respondWith(
-      caches.match(event.request).then((cached) => {
-        return (
-          cached ||
-          fetch(event.request).then((response) => {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-            return response;
-          })
-        );
-      })
-    );
+  if (req.method !== "GET") return;
+
+  if (url.origin === "https://api.open-meteo.com") {
+    event.respondWith(staleWhileRevalidate(req, "open-meteo-cache"));
+    return;
+  }
+
+  if (url.origin === self.location.origin) {
+    event.respondWith(cacheFirst(req));
+    return;
   }
 });
+
+async function cacheFirst(req) {
+  const cache = await caches.open(VERSION);
+  const cached = await cache.match(req);
+  if (cached) return cached;
+
+  try {
+    const fresh = await fetch(req);
+    cache.put(req, fresh.clone());
+    return fresh;
+  } catch (e) {
+    if (req.mode === "navigate") {
+      const fallback = await cache.match("./index.html");
+      if (fallback) return fallback;
+    }
+    throw e;
+  }
+}
+
+async function staleWhileRevalidate(req, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(req);
+  const fetchPromise = fetch(req).then((fresh) => {
+    cache.put(req, fresh.clone());
+    return fresh;
+  }).catch(() => cached);
+  return cached || fetchPromise;
+}
