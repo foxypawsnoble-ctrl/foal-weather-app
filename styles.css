@@ -257,4 +257,66 @@ footer {
   .rug-advice {
     text-align: left;
   }
+  
+/* Dramatic animated weather layers */
+#rainLayer,
+#snowLayer,
+#flashLayer,
+#sunLayer,
+#cloudLayer {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+/* Rain */
+#rainLayer {
+  background-image: linear-gradient(120deg, rgba(255,255,255,0.25) 2px, transparent 2px);
+  background-size: 2px 20px;
+  animation: rainAnim 0.4s linear infinite;
+}
+
+@keyframes rainAnim {
+  from { background-position: 0 0; }
+  to { background-position: -10px 20px; }
+}
+
+/* Snow */
+#snowLayer {
+  background-image: radial-gradient(white 1px, transparent 1px);
+  background-size: 6px 6px;
+  animation: snowAnim 6s linear infinite;
+}
+
+@keyframes snowAnim {
+  from { background-position: 0 0; }
+  to { background-position: 0 600px; }
+}
+
+/* Thunder flash */
+#flashLayer {
+  background: white;
+  transition: opacity 0.2s ease;
+}
+
+/* Sun halo */
+#sunLayer {
+  background: radial-gradient(circle at top right, rgba(255,255,200,0.6), transparent 60%);
+  transition: opacity 0.8s ease;
+}
+
+/* Cloud / mist drift */
+#cloudLayer {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><circle cx="300" cy="200" r="200" fill="white" opacity="0.05"/></svg>');
+  background-size: 120% 120%;
+  animation: cloudDrift 30s linear infinite;
+  transition: opacity 1.2s ease;
+}
+
+@keyframes cloudDrift {
+  from { background-position: 0 0; }
+  to { background-position: -200px -100px; }
 }
