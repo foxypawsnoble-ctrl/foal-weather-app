@@ -257,7 +257,7 @@ footer {
   .rug-advice {
     text-align: left;
   }
-  
+}
 /* Dramatic animated weather layers */
 #rainLayer,
 #snowLayer,
@@ -320,3 +320,4 @@ footer {
   from { background-position: 0 0; }
   to { background-position: -200px -100px; }
 }
+
