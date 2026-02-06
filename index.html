@@ -1,93 +1,850 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Foal Field Weather – WR3–WR9</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WR3 7SB Weather</title>
+  <meta name="theme-color" content="#0b1220" />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root { color-scheme: dark; }
+    body { margin:0; background:#0b1220; color:#e8eefc; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 18px; }
+    .top { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    h1 { margin:0; font-size: 22px; letter-spacing: 0.2px; }
+    .sub { opacity:0.75; font-size: 13px; margin-top: 6px; }
+    .grid { display:grid; gap:12px; margin-top:12px; }
+    @media (min-width: 900px){ .grid3{ grid-template-columns: repeat(3, 1fr);} }
+    .card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px;
+      padding: 14px;
+      backdrop-filter: blur(6px);
+    }
+    .big { font-size: 42px; font-weight: 850; line-height: 1.05; }
+    .mid { font-size: 22px; font-weight: 750; }
+    .small { opacity:0.75; font-size: 13px; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .pill {
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 8px 10px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+    }
+    .btn {
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: #e8eefc;
+      padding: 10px 12px;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+    .btn:disabled { opacity: 0.5; cursor:not-allowed; }
+    .ok { color: #9fe7b2; }
+    .warn { color: #ffd18a; }
+    .bad { color: #ff9ea1; }
+    .hr { height:1px; background: rgba(255,255,255,0.10); margin: 12px 0; }
+    .mono { font-variant-numeric: tabular-nums; }
 
-  <!-- PWA manifest -->
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#243b53" />
+    .toggle {
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 8px 10px; border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+    }
+    select.mode {
+      background: transparent; border: none; color: inherit;
+      font-weight: 650;
+      outline: none;
+    }
 
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
+    @media print {
+      :root { color-scheme: light; }
+      body { background: #fff !important; color: #000 !important; }
+      .card { background: #fff !important; border: 1px solid #ddd !important; }
+      .btn, #status, #nextUpdatePill, #modeWrap { display: none !important; }
+      .pill { border: 1px solid #bbb !important; background: #f6f6f6 !important; color: #000 !important; }
+      .ok, .warn, .bad { color: #000 !important; }
+    }
+  
+    #map { height: 340px; border-radius: 18px; overflow: hidden; }
+    .mapbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; justify-content:space-between; margin-bottom:10px;}
+    .field{ display:flex; flex-direction:column; gap:6px; min-width:260px;}
+    .field label{ font-size:12px; color:var(--muted); }
+    .field input{ padding:10px 12px; border-radius: 14px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.06); color:var(--text); outline:none;}
+    .chip{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius: 999px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.06); font-size:12px; color:var(--text);}
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    .legend{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px; }
+    .swatch{ width:12px; height:12px; border-radius:3px; border:1px solid rgba(255,255,255,0.25); display:inline-block; }
+    .muted{ color: var(--muted); font-size: 12px; }
 
-  <!-- Your stylesheet -->
-  <link rel="stylesheet" href="styles.css" />
+  </style>
 
-  <!-- Leaflet JS (must load BEFORE main.js) -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-  <!-- Your script (deferred so Leaflet loads first) -->
-  <script defer src="main.js"></script>
 </head>
-
 <body>
-  <header>
-    <h1>Foal Field Weather</h1>
-    <p>Live conditions between WR3 7SB and WR9 7JE</p>
-  </header>
-
-  <main>
-    <section id="current">
-      <div class="current-main">
-        <div>
-          <h2>Now</h2>
-          <p id="location-name">Loading location…</p>
-          <p class="temp"><span id="temp">--</span>°C</p>
-          <p id="description">Loading…</p>
-          <p class="feels">Feels like <span id="feels-like">--</span>°C</p>
-          <p class="details">
-            Wind: <span id="wind-speed">--</span> mph ·
-            Gusts: <span id="wind-gust">--</span> mph ·
-            Rain (1h): <span id="rain-1h">0</span> mm
-          </p>
-        </div>
-
-        <div class="icon-and-alert">
-          <div id="weather-icon" class="weather-icon">⛅</div>
-          <div id="rug-advice" class="rug-advice">Rugging advice loading…</div>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>WR3 7SB — Hyper-local Weather</h1>
+        <div class="sub">
+          <span id="asOfText">As of today</span> • Locked location • Auto-refresh every 10 minutes • Uses last-known data if offline
         </div>
       </div>
-    </section>
+      <div class="row">
+        <span id="modeWrap" class="toggle small">
+          🗓️ Mode:
+          <select id="modeSelect" class="mode" aria-label="Season mode">
+            <option value="auto">Auto</option>
+            <option value="winter">Winter</option>
+            <option value="summer">Summer</option>
+          </select>
+          <span class="mono" id="modeHint" style="opacity:.8"></span>
+        </span>
+        <button id="refresh" class="btn">Refresh</button>
+        <button id="print" class="btn">Print</button>
+        <span class="pill small mono" id="status">Loading…</span>
+      </div>
+    </div>
 
-    <section id="alerts">
-      <h2>Weather alerts</h2>
-      <div id="alerts"></div>
-    </section>
+    <div class="grid grid3">
+      <div class="card">
+        <div class="small">Right now</div>
+        <div class="big mono" id="nowTemp">—</div>
+        <div class="small mono" id="nowFeels">Feels like —</div>
+        <div class="hr"></div>
+        <div class="row small">
+          <span class="pill">🌤️ <span id="nowSummary">—</span></span>
+          <span class="pill">🕒 <span class="mono" id="nowTime">—</span></span>
+          <span class="pill">🌅 <span class="mono" id="sunriseTime">—</span></span>
+          <span class="pill">🌇 <span class="mono" id="sunsetTime">—</span></span>
+        </div>
+      </div>
 
-    <section id="map-section">
-      <h2>Field weather map</h2>
-      <p class="map-note">
-        Colours show severity; icons show main weather type.
-      </p>
-      <div id="map"></div>
+      <div class="card">
+        <div class="small">Wind</div>
+        <div class="mid mono" id="windSpeed">—</div>
+        <div class="small mono" id="windGust">Gusts —</div>
+        <div class="hr"></div>
+        <div class="small" id="windAlert">—</div>
+      </div>
 
+      <div class="card">
+        <div class="small">Rain & frost</div>
+        <div class="mid mono" id="rainNow">—</div>
+        <div class="small mono" id="rainSoon">Next hour: —</div>
+        <div class="hr"></div>
+        <div class="small" id="frostRisk">—</div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:12px;">
+      
+    <div class="card">
+      <div class="title">Local weather map <span class="pill">3 mile radius</span></div>
+      <div class="mapbar">
+        <div class="field">
+          <label for="postcodeInput">Central postcode (GB)</label>
+          <input id="postcodeInput" inputmode="text" autocomplete="postal-code" placeholder="e.g. WR3 7SB"/>
+        </div>
+        <div style="display:flex; gap:10px; align-items:end;">
+          <button class="btn" id="setPostcodeBtn" type="button">Set centre</button>
+          <button class="btn" id="locateBtn" type="button">Use my location</button>
+        </div>
+      </div>
+      <div id="map" aria-label="Weather map"></div>
       <div class="legend">
-        <span class="legend-item legend-low">Mild</span>
-        <span class="legend-item legend-medium">Uncomfortable</span>
-        <span class="legend-item legend-high">Harsh</span>
-        <span class="legend-item legend-extreme">Extreme</span>
+        <span class="chip"><span class="swatch" style="background:#2dd4bf"></span> light</span>
+        <span class="chip"><span class="swatch" style="background:#60a5fa"></span> moderate</span>
+        <span class="chip"><span class="swatch" style="background:#f59e0b"></span> heavy</span>
+        <span class="chip"><span class="swatch" style="background:#ef4444"></span> severe</span>
+        <span class="muted">Markers show current condition + intensity (precip / wind).</span>
       </div>
-    </section>
+    </div>
 
-    <section id="forecast">
-      <h2>Next 12 hours</h2>
-      <div id="hourly" class="forecast-grid"></div>
-    </section>
-  </main>
+    <div class="card">
+      <div class="title">Alerts <span class="pill" id="alertsPill">—</span></div>
+      <div class="chips" id="alertsChips"></div>
+      <div class="hr"></div>
+      <div class="row small">
+        <div><div class="k">Next 24h rain</div><div class="v" id="rain24">—</div></div>
+        <div><div class="k">Next 24h snow</div><div class="v" id="snow24">—</div></div>
+        <div><div class="k">Pollen (now)</div><div class="v" id="pollenNow">—</div></div>
+      </div>
+      <div class="row small" style="margin-top:10px;">
+        <div><div class="k">Frost risk</div><div class="v" id="frostRisk">—</div></div>
+        <div><div class="k">Ice risk</div><div class="v" id="iceRisk">—</div></div>
+        <div><div class="k">Heat-wave risk</div><div class="v" id="heatRisk">—</div></div>
+      </div>
+      <div class="muted" style="margin-top:10px;">Alerts are rule-based from the forecast + current data (no official Met Office feed in this lightweight build).</div>
+    </div>
+<div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <strong>Decisions at a glance</strong>
+          <span class="pill small mono" id="nextUpdatePill">Next update: —</span>
+        </div>
 
-  <footer>
-    <p>Data from OpenWeather. Use as guidance, not a substitute for checking your foals in person.</p>
-  </footer>
+        <div class="hr"></div>
+
+        <div class="row">
+          <span class="pill">🧥 Rug suggestion (mares)</span>
+          <span class="small mono" id="rugSuggestion">—</span>
+        </div>
+
+        <div class="row" style="margin-top:6px;">
+          <span class="pill">🐣 Foal note (6–8m)</span>
+          <span class="small mono" id="foalNote">—</span>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <span class="pill">🧭 Overall verdict</span>
+          <span class="small mono" id="overallVerdict">—</span>
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <span class="pill">🌞 Day verdict</span>
+          <span class="small mono" id="dayVerdict">—</span>
+          <span class="pill">🌙 Night verdict</span>
+          <span class="small mono" id="nightVerdict">—</span>
+          <span class="pill">⏱️ Current period</span>
+          <span class="small mono" id="periodNow">—</span>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row">
+          <span class="pill">🐴 Yard note</span>
+          <span class="small" id="yardNote">—</span>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <span class="pill">🍼 Foal ages</span>
+          <span class="small mono" id="foalAges">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="small" style="margin-top:14px; opacity:0.65;">
+      Data: Open-Meteo • Units: °C + mph • Print makes a clean “yard sheet”.
+    </div>
+  </div>
+
+<script>
+  const DEFAULT_LAT = 52.234847;
+  const DEFAULT_LON = -2.217939;
+  const DEFAULT_POSTCODE = "WR3 7SB";
+  const RADIUS_MILES = 3;
+
+
+  const BASELINE_DATE_ISO = "2026-01-20";
+  const BASELINE_AGES_MONTHS = [6, 7, 8];
+
+  const el = (id) => document.getElementById(id);
+
+  let map, centreMarker, radiusCircle, radarLayer, pointLayer;
+  let center = loadCenter(); // {lat, lon, postcode?}
+
+  function loadCenter(){
+    try{
+      const raw = localStorage.getItem("center");
+      if(raw){
+        const c = JSON.parse(raw);
+        if(typeof c.lat==="number" && typeof c.lon==="number") return c;
+      }
+    }catch(e){}
+    return { lat: DEFAULT_LAT, lon: DEFAULT_LON, postcode: DEFAULT_POSTCODE };
+  }
+  function saveCenter(c){
+    center = c;
+    localStorage.setItem("center", JSON.stringify(c));
+  }
+  function milesToMeters(mi){ return mi * 1609.344; }
+
+  async function geocodePostcode(pc){
+    const q = encodeURIComponent(pc.trim());
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb&q=${q}`;
+    const r = await fetch(url, { headers: { "Accept": "application/json" } });
+    if(!r.ok) throw new Error("Geocode failed");
+    const j = await r.json();
+    if(!j || !j[0]) throw new Error("Not found");
+    return { lat: parseFloat(j[0].lat), lon: parseFloat(j[0].lon) };
+  }
+
+  function conditionIcon(code){
+    if(code===0) return "☀️";
+    if([1,2].includes(code)) return "🌤️";
+    if(code===3) return "☁️";
+    if([45,48].includes(code)) return "🌫️";
+    if([51,53,55,56,57].includes(code)) return "🌦️";
+    if([61,63,65,66,67,80,81,82].includes(code)) return "🌧️";
+    if([71,73,75,77,85,86].includes(code)) return "🌨️";
+    if([95,96,99].includes(code)) return "⛈️";
+    return "🌥️";
+  }
+
+  function swatchForIntensity(x){
+    return ["#2dd4bf","#60a5fa","#f59e0b","#ef4444"][Math.max(0,Math.min(3,x|0))];
+  }
+
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+  function getAutoSeason(d=new Date()){
+    const m = d.getMonth()+1;
+    if ([11,12,1,2,3].includes(m)) return "winter";
+    if ([5,6,7,8,9].includes(m)) return "summer";
+    return "winter";
+  }
+
+  function loadMode(){
+    const saved = localStorage.getItem("seasonMode") || "auto";
+    el("modeSelect").value = saved;
+    updateModeHint();
+  }
+
+  function effectiveSeason(){
+    const mode = el("modeSelect").value;
+    return mode === "auto" ? getAutoSeason() : mode;
+  }
+
+  function updateModeHint(){
+    const mode = el("modeSelect").value;
+    const auto = getAutoSeason();
+    el("modeHint").textContent = mode === "auto" ? `(auto: ${auto})` : "";
+  }
+
+  el("modeSelect").addEventListener("change", () => {
+    localStorage.setItem("seasonMode", el("modeSelect").value);
+    updateModeHint();
+    const cached = localStorage.getItem("lastWeather");
+    if (cached) {
+      try { render(JSON.parse(cached).j); } catch {}
+    }
+  });
+
+  function thresholdsFor(season){
+    if (season === "winter") {
+      return {
+        gustMph: 25,
+        rainProbNextHour: 60,
+        rainMmNextHour: 0.5,
+        frostC: 0,
+        mareLightAt: 2,
+        mareMediumAt: -3,
+        foalMonitorWetAt: 3,
+        foalMonitorColdAt: 1,
+        foalConsiderAt: -2,
+      };
+    }
+    return {
+      gustMph: 30,
+      rainProbNextHour: 70,
+      rainMmNextHour: 1.0,
+      frostC: 0,
+      mareLightAt: -999,
+      mareMediumAt: -999,
+      foalMonitorWetAt: -999,
+      foalMonitorColdAt: -999,
+      foalConsiderAt: -999,
+    };
+  }
+
+  function wxLabel(code){
+    if (code === 0) return "☀️ Clear";
+    if ([1,2,3].includes(code)) return "⛅ Partly cloudy";
+    if ([45,48].includes(code)) return "🌫️ Fog";
+    if ([51,53,55,56,57].includes(code)) return "🌦️ Drizzle";
+    if ([61,63,65,66,67].includes(code)) return "🌧️ Rain";
+    if ([71,73,75,77].includes(code)) return "❄️ Snow";
+    if ([80,81,82].includes(code)) return "🌦️ Showers";
+    if ([85,86].includes(code)) return "🌨️ Snow showers";
+    if ([95,96,99].includes(code)) return "⛈️ Thunder";
+    return "🌡️ Weather";
+  }
+
+  function setStatus(text, cls=""){
+    el("status").textContent = text;
+    el("status").className = "pill small mono " + cls;
+  }
+
+  function dateAwareText() {
+    const d = new Date();
+    const label = d.toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+    el("asOfText").textContent = "As of " + label;
+  }
+
+  function monthsDiffApprox(fromISO, toDate) {
+    const from = new Date(fromISO + "T00:00:00");
+    let months = (toDate.getFullYear() - from.getFullYear()) * 12 + (toDate.getMonth() - from.getMonth());
+    if (toDate.getDate() < from.getDate()) months -= 1;
+    return Math.max(0, months);
+  }
+
+  function updateFoalAges() {
+    const today = new Date();
+    const add = monthsDiffApprox(BASELINE_DATE_ISO, today);
+    const ages = BASELINE_AGES_MONTHS.map(m => m + add);
+    const oldest = Math.max(...ages);
+    ages.sort((a,b)=>a-b);
+    el("foalAges").textContent = `Oldest now ~${oldest} months • Others ~${ages.join(" / ")} months`;
+  }
+
+  function verdictClass(v){
+    if (v === "SAFE") return "ok";
+    if (v === "MONITOR") return "warn";
+    return "bad";
+  }
+
+  function computeVerdict({ effective, wet, gust, period, T }) {
+    let verdict = "SAFE";
+    const coldEdge = (period === "NIGHT") ? 1 : 0;
+
+    if (effectiveSeason() === "summer") {
+      if (wet && gust >= 35) verdict = "MONITOR";
+      if (wet && gust >= 45) verdict = "TAKE ACTION";
+      return verdict;
+    }
+
+    if (wet && effective <= 4 - coldEdge) verdict = "MONITOR";
+    if (gust >= T.gustMph) verdict = "MONITOR";
+    if (effective <= 1 - coldEdge) verdict = "MONITOR";
+
+    if (wet && effective <= -2 - coldEdge) verdict = "TAKE ACTION";
+    if (gust >= 40) verdict = "TAKE ACTION";
+    if (effective <= -4 - coldEdge) verdict = "TAKE ACTION";
+
+    return verdict;
+  }
+
+  async function loadWeather(){
+    el("refresh").disabled = true;
+    setStatus("Updating…");
+
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${center.lat}&longitude=${center.lon}` +
+      `&current=temperature_2m,apparent_temperature,precipitation,rain,snowfall,weather_code,wind_speed_10m,wind_gusts_10m` +
+      `&hourly=precipitation_probability,precipitation,rain,snowfall,weather_code,wind_gusts_10m,wind_speed_10m,temperature_2m` +
+      `&daily=temperature_2m_min,temperature_2m_max,sunrise,sunset` +
+      `&temperature_unit=celsius&windspeed_unit=mph&timezone=auto`;
+
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error("Bad response");
+      const j = await r.json();
+
+      localStorage.setItem("lastWeather", JSON.stringify({ t: Date.now(), j }));
+      render(j);
+
+      setStatus("Live • " + new Date().toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}), "ok");
+    } catch (e) {
+      const cached = localStorage.getItem("lastWeather");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        render(parsed.j);
+        const ageMin = Math.round((Date.now() - parsed.t) / 60000);
+        setStatus("Offline • cached " + ageMin + "m ago", "warn");
+      } else {
+        setStatus("Offline • no cache yet", "bad");
+      }
+    } finally {
+      el("refresh").disabled = false;
+    }
+  }
+
+  function render(j){
+    const c = j.current;
+
+    const season = effectiveSeason();
+    const T = thresholdsFor(season);
+
+    el("nowTemp").textContent = Math.round(c.temperature_2m) + "°C";
+    el("nowFeels").textContent = "Feels like " + Math.round(c.apparent_temperature) + "°C";
+    el("nowTime").textContent = fmtTime(c.time);
+    el("nowSummary").textContent = wxLabel(c.weather_code);
+
+    const sunrise = j.daily.sunrise?.[0];
+    const sunset = j.daily.sunset?.[0];
+    el("sunriseTime").textContent = sunrise ? fmtTime(sunrise) : "—";
+    el("sunsetTime").textContent = sunset ? fmtTime(sunset) : "—";
+
+    el("windSpeed").textContent = Math.round(c.wind_speed_10m) + " mph";
+    el("windGust").textContent = "Gusts " + Math.round(c.wind_gusts_10m) + " mph";
+    const gust = c.wind_gusts_10m;
+
+    el("windAlert").innerHTML =
+      gust >= T.gustMph
+        ? `<span class="bad">⚠️ Gusts above ${T.gustMph} mph likely.</span>`
+        : `<span class="ok">✓ Gusts below ${T.gustMph} mph threshold.</span>`;
+
+    el("rainNow").textContent = (c.precipitation ?? 0) + " mm now";
+
+    const now = new Date(c.time);
+    const times = j.hourly.time.map(t => new Date(t));
+    let idx = times.findIndex(d => d >= now);
+    if (idx < 0) idx = 0;
+
+    const pop = j.hourly.precipitation_probability?.[idx] ?? 0;
+    const mm  = j.hourly.precipitation?.[idx] ?? 0;
+    el("rainSoon").textContent = `Next hour: ${mm} mm • ${pop}% chance`;
+
+    const wetSoon = (pop >= T.rainProbNextHour) || (mm >= T.rainMmNextHour);
+    const rainingNow = (c.precipitation ?? 0) >= 0.2;
+    const wet = wetSoon || rainingNow;
+
+    const minToday = j.daily.temperature_2m_min?.[0];
+    el("frostRisk").innerHTML =
+      (season === "winter" && typeof minToday === "number" && minToday <= T.frostC)
+        ? `<span class="bad">❄️ Frost risk: low ${Math.round(minToday)}°C (≤ ${T.frostC}°C)</span>`
+        : `<span class="ok">✓ Frost unlikely.</span>`;
+
+    const next = new Date(Date.now() + 10 * 60000);
+    el("nextUpdatePill").textContent = "Next update: " + next.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});
+
+    const feelsC = c.apparent_temperature;
+    const windMph = c.wind_speed_10m;
+
+    let effective = feelsC;
+    if (windMph >= 25) effective -= 0.5;
+    if (windMph >= 35) effective -= 0.5;
+    if (wetSoon) effective -= 1.5;
+    if (rainingNow) effective -= 1;
+
+    let rug = "none";
+    if (effective <= T.mareLightAt) rug = "lightweight";
+    if (effective <= T.mareMediumAt) rug = "medium";
+    if (feelsC >= 5 && rug === "medium") rug = "lightweight";
+    if (season === "summer") rug = "none";
+
+    el("rugSuggestion").textContent = `${rug} (effective ${effective.toFixed(1)}°C • ${season})`;
+
+    let foalAdvice = "none needed";
+    if (season === "winter") {
+      if (wet && effective <= T.foalMonitorWetAt) foalAdvice = "monitor — wet and chilly";
+      if (effective <= T.foalMonitorColdAt) foalAdvice = "monitor — cold conditions";
+      if (wet && effective <= T.foalConsiderAt) foalAdvice = "consider lightweight if exposed";
+    } else {
+      if (wet && gust >= 35) foalAdvice = "monitor — wet + windy";
+      if (wet && gust >= 45) foalAdvice = "take action — get them into best shelter";
+    }
+    el("foalNote").textContent = foalAdvice;
+
+    let isNight = false;
+    if (sunrise && sunset) {
+      const sr = new Date(sunrise);
+      const ss = new Date(sunset);
+      isNight = (now < sr) || (now > ss);
+    } else {
+      const h = now.getHours();
+      isNight = (h >= 19 || h < 7);
+    }
+
+    const dayV = computeVerdict({ effective, wet, gust, period: "DAY", T });
+    const nightV = computeVerdict({ effective, wet, gust, period: "NIGHT", T });
+
+    el("dayVerdict").textContent = dayV;
+    el("nightVerdict").textContent = nightV;
+    el("periodNow").textContent = isNight ? "NIGHT" : "DAY";
+
+    el("dayVerdict").className = `small mono ${verdictClass(dayV)}`;
+    el("nightVerdict").className = `small mono ${verdictClass(nightV)}`;
+    el("periodNow").className = `small mono ${isNight ? "warn" : "ok"}`;
+
+    let overall = isNight ? nightV : dayV;
+    if (foalAdvice.includes("consider lightweight") || foalAdvice.includes("take action")) overall = "TAKE ACTION";
+    el("overallVerdict").textContent = overall;
+    el("overallVerdict").className = `small mono ${verdictClass(overall)}`;
+
+    let note = "All looks normal.";
+    if (season === "summer") {
+      if (wetSoon) note = "Rain soon — check shelter options and keep an eye on chilling if wind rises.";
+      if (wet && gust >= 35) note = "Wet + windy — use the lowest/most sheltered areas for feed/turnout.";
+    } else {
+      if (gust >= T.gustMph) note = "Breezy/gusty — use sheltered areas for turnout/feeding if needed.";
+      if (wetSoon) note = "Rain likely soon — plan rugs/check shelter spots if you use them.";
+      if (rainingNow) note = "Currently wet — watch for chilling if wind picks up.";
+      if (typeof minToday === "number" && minToday <= T.frostC) note = "Frost risk — watch for icy gateways/trackways overnight.";
+    }
+    el("yardNote").textContent = note;
+
+    updateFoalAges();
+  }
+
+  el("refresh").addEventListener("click", refreshAll);
+  el("print").addEventListener("click", () => window.print());
+
+  // PWA service worker registration
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(console.error);
+    });
+  }
+
+  dateAwareText();
+  loadMode();
+  updateFoalAges();
+    async function loadPollen(){
+    const url =
+      `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${center.lat}&longitude=${center.lon}` +
+      `&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen,european_aqi,uv_index` +
+      `&timezone=auto`;
+    try{
+      const r = await fetch(url, { cache: "no-store" });
+      if(!r.ok) throw new Error("Bad response");
+      const j = await r.json();
+      localStorage.setItem("lastPollen", JSON.stringify({ t: Date.now(), j }));
+      renderPollen(j);
+    }catch(e){
+      const cached = localStorage.getItem("lastPollen");
+      if(cached) renderPollen(JSON.parse(cached).j);
+      else el("pollenNow").textContent = "—";
+    }
+    try{ computeAlerts(j); }catch(e){}
+  }
+
+  function pollenLevel(v){
+    if(v==null || isNaN(v)) return {label:"—", level:0};
+    if(v < 10) return {label:"Low", level:0};
+    if(v < 50) return {label:"Moderate", level:1};
+    if(v < 100) return {label:"High", level:2};
+    return {label:"Very high", level:3};
+  }
+
+  function renderPollen(j){
+    const c = j.current || {};
+    const types = ["grass_pollen","birch_pollen","alder_pollen","mugwort_pollen","ragweed_pollen","olive_pollen"];
+    const vals = types.map(k => ({k, v: c[k]})).filter(x => typeof x.v === "number");
+    const top = vals.sort((a,b)=>b.v-a.v)[0];
+    if(!top){ el("pollenNow").textContent = "—"; return; }
+    const lvl = pollenLevel(top.v);
+    const name = top.k.replace("_pollen","").replaceAll("_"," ");
+    el("pollenNow").textContent = `${lvl.label} (${name}: ${Math.round(top.v)} gr/m³)`;
+  }
+
+  function computeAlerts(weather){
+    const chips = [];
+    const now = weather.current || {};
+    const hourly = weather.hourly || {};
+
+    function sumNext(arrName, hours){
+      const arr = hourly[arrName] || [];
+      let s=0;
+      for(let i=0;i<Math.min(arr.length, hours);i++){
+        const v = arr[i];
+        if(typeof v==="number") s += v;
+      }
+      return s;
+    }
+    function maxNext(arrName, hours){
+      const arr = hourly[arrName] || [];
+      let m=-Infinity;
+      for(let i=0;i<Math.min(arr.length, hours);i++){
+        const v = arr[i];
+        if(typeof v==="number") m = Math.max(m, v);
+      }
+      return (m===-Infinity)? null : m;
+    }
+    function minNext(arrName, hours){
+      const arr = hourly[arrName] || [];
+      let m=Infinity;
+      for(let i=0;i<Math.min(arr.length, hours);i++){
+        const v = arr[i];
+        if(typeof v==="number") m = Math.min(m, v);
+      }
+      return (m===Infinity)? null : m;
+    }
+
+    const rain24 = sumNext("rain", 24);
+    const snow24 = sumNext("snowfall", 24);
+    el("rain24").textContent = (isFinite(rain24)? `${rain24.toFixed(1)} mm` : "—");
+    el("snow24").textContent = (isFinite(snow24)? `${snow24.toFixed(1)} cm` : "—");
+
+    const tmin24 = minNext("temperature_2m", 24);
+    const precip24 = sumNext("precipitation", 24);
+    const frost = (tmin24!=null && tmin24 <= 1);
+    const ice = (tmin24!=null && tmin24 <= 0 && precip24 >= 0.2);
+
+    el("frostRisk").textContent = frost ? `Likely (min ${tmin24.toFixed(0)}°C)` : (tmin24!=null ? `Unlikely (min ${tmin24.toFixed(0)}°C)` : "—");
+    el("iceRisk").textContent = ice ? "Likely (freeze + wet)" : "Low";
+
+    if(snow24 >= 0.5) chips.push({t:"Snow likely", tone:"warn"});
+    if(rain24 >= 10) chips.push({t:"Heavy rain", tone:"warn"});
+
+    const gustMax = maxNext("wind_gusts_10m", 24);
+    if(gustMax!=null && gustMax >= 45) chips.push({t:"Severe wind", tone:"bad"});
+    else if(gustMax!=null && gustMax >= 35) chips.push({t:"Strong wind", tone:"warn"});
+
+    const codeMax = maxNext("weather_code", 24);
+    if(codeMax!=null && [95,96,99].includes(codeMax)) chips.push({t:"Thunder risk", tone:"bad"});
+
+    const d = weather.daily || {};
+    const tmaxs = d.temperature_2m_max || [];
+    const heat = (tmaxs.slice(0,3).some(x=>typeof x==="number" && x>=30)) || (typeof now.temperature_2m==="number" && now.temperature_2m>=28);
+    el("heatRisk").textContent = heat ? "Elevated" : "Low";
+    if(heat) chips.push({t:"Heat stress risk", tone:"warn"});
+
+    if(chips.some(c=>c.t==="Severe wind" || c.t==="Thunder risk") || (rain24>=20)) chips.push({t:"Severe weather", tone:"bad"});
+
+    const wrap = el("alertsChips");
+    wrap.innerHTML = "";
+    if(chips.length===0){
+      wrap.innerHTML = `<span class="chip">✅ No flagged alerts</span>`;
+      el("alertsPill").textContent = "OK";
+    } else {
+      el("alertsPill").textContent = `${chips.length}`;
+      for(const c of chips){
+        const cls = c.tone==="bad" ? "pill bad" : (c.tone==="warn" ? "pill warn" : "pill");
+        const span = document.createElement("span");
+        span.className = "chip";
+        span.innerHTML = `<span class="${cls}">${c.t}</span>`;
+        wrap.appendChild(span);
+      }
+    }
+  }
+
+  function initUI(){
+    if(!el("postcodeInput")) return;
+    el("postcodeInput").value = (center.postcode || DEFAULT_POSTCODE);
+    el("setPostcodeBtn").addEventListener("click", async ()=>{
+      const pc = el("postcodeInput").value.trim();
+      if(!pc) return;
+      try{
+        setStatus("Finding postcode…");
+        const {lat, lon} = await geocodePostcode(pc);
+        saveCenter({lat, lon, postcode: pc.toUpperCase()});
+        setStatus("Centre set • " + (center.postcode||""), "ok");
+        refreshAll();
+      }catch(e){
+        setStatus("Postcode not found", "warn");
+      }
+    });
+
+    el("locateBtn").addEventListener("click", ()=>{
+      if(!navigator.geolocation){ setStatus("Geolocation not available", "warn"); return; }
+      setStatus("Getting location…");
+      navigator.geolocation.getCurrentPosition((pos)=>{
+        saveCenter({lat: pos.coords.latitude, lon: pos.coords.longitude, postcode: center.postcode || DEFAULT_POSTCODE});
+        setStatus("Using your location", "ok");
+        refreshAll();
+      }, ()=> setStatus("Couldn’t get location", "warn"), { enableHighAccuracy:true, timeout: 8000 });
+    });
+  }
+
+  async function initMap(){
+    if(!window.L || !el("map")) return;
+    map = L.map("map", { zoomControl: true }).setView([center.lat, center.lon], 12);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    pointLayer = L.layerGroup().addTo(map);
+    centreMarker = L.marker([center.lat, center.lon]).addTo(map);
+    radiusCircle = L.circle([center.lat, center.lon], { radius: milesToMeters(RADIUS_MILES), weight:1, opacity:0.8, fillOpacity:0.08 }).addTo(map);
+
+    await refreshRadar();
+    setInterval(refreshRadar, 10*60*1000);
+  }
+
+  async function refreshRadar(){
+    try{
+      const r = await fetch("https://api.rainviewer.com/public/weather-maps.json", { cache:"no-store" });
+      if(!r.ok) throw new Error("Bad response");
+      const j = await r.json();
+      const frames = (j.radar?.past || []).concat(j.radar?.nowcast || []);
+      const latest = frames[frames.length-1];
+      if(!latest?.path) return;
+      const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
+      if(radarLayer) map.removeLayer(radarLayer);
+      radarLayer = L.tileLayer(tileUrl, { opacity: 0.55, zIndex: 400 }).addTo(map);
+    }catch(e){}
+  }
+
+  function destinationPoint(lat, lon, bearingDeg, distanceMiles){
+    const R = 6371e3;
+    const dist = distanceMiles*1609.344;
+    const brng = bearingDeg*Math.PI/180;
+    const φ1 = lat*Math.PI/180, λ1 = lon*Math.PI/180;
+
+    const φ2 = Math.asin(Math.sin(φ1)*Math.cos(dist/R) + Math.cos(φ1)*Math.sin(dist/R)*Math.cos(brng));
+    const λ2 = λ1 + Math.atan2(Math.sin(brng)*Math.sin(dist/R)*Math.cos(φ1), Math.cos(dist/R)-Math.sin(φ1)*Math.sin(φ2));
+    return { lat: φ2*180/Math.PI, lon: ((λ2*180/Math.PI + 540)%360)-180 };
+  }
+
+  function gridPointsInRadius(lat, lon, radiusMiles){
+    const pts = [{lat, lon}];
+    const rings = [radiusMiles*0.5, radiusMiles*0.9];
+    const bearings = [0,45,90,135,180,225,270,315];
+    for(const r of rings){
+      for(const b of bearings) pts.push(destinationPoint(lat, lon, b, r));
+    }
+    return pts;
+  }
+
+  async function refreshMapPoints(){
+    if(!map || !pointLayer) return;
+    pointLayer.clearLayers();
+    const pts = gridPointsInRadius(center.lat, center.lon, RADIUS_MILES);
+
+    const reqs = pts.map(p =>
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}`+
+            `&current=precipitation,weather_code,wind_gusts_10m,temperature_2m`+
+            `&temperature_unit=celsius&windspeed_unit=mph&timezone=auto`, { cache:"no-store" })
+      .then(r=>r.ok?r.json():null).catch(()=>null)
+    );
+    const results = await Promise.all(reqs);
+
+    results.forEach((j, i)=>{
+      const c = j?.current;
+      if(!c) return;
+      const precip = (typeof c.precipitation==="number") ? c.precipitation : 0;
+      const gust = (typeof c.wind_gusts_10m==="number") ? c.wind_gusts_10m : 0;
+
+      let intensity = 0;
+      if(precip >= 4 || gust >= 45) intensity = 3;
+      else if(precip >= 2 || gust >= 35) intensity = 2;
+      else if(precip >= 0.5 || gust >= 20) intensity = 1;
+
+      const color = swatchForIntensity(intensity);
+      const icon = conditionIcon(c.weather_code);
+
+      const m = L.circleMarker([pts[i].lat, pts[i].lon], {
+        radius: 10, color, weight: 2, fillColor: color, fillOpacity: 0.35
+      }).addTo(pointLayer);
+
+      m.bindTooltip(`${icon} ${Math.round(c.temperature_2m)}°C • ${precip.toFixed(1)}mm • gust ${Math.round(gust)}mph`, {direction:"top", opacity:0.95});
+    });
+  }
+
+  function refreshMapGeometry(){
+    if(!map) return;
+    map.setView([center.lat, center.lon], 12);
+    centreMarker?.setLatLng([center.lat, center.lon]);
+    radiusCircle?.setLatLng([center.lat, center.lon]).setRadius(milesToMeters(RADIUS_MILES));
+  }
+
+  function refreshAll(){
+    refreshMapGeometry();
+    initUI();
+  initMap();
+  loadPollen();
+  loadWeather();
+  refreshMapPoints();
+    loadPollen();
+    refreshMapPoints();
+  }
+
+initUI();
+  initMap();
+  loadPollen();
+  loadWeather();
+  refreshMapPoints();
+  setInterval(refreshAll, 10 * 60 * 1000);
+</script>
 </body>
 </html>
