@@ -191,6 +191,29 @@
       from { background-position: 0 0; }
       to { background-position: -200px -100px; }
     }
+
+    .empty-icon {
+  background: none !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+    .weather-temp-icon {
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(6px);
+  border-radius: 12px;
+  padding: 4px 10px;
+  color: #e8eefc;
+  font-size: 12px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 6px rgba(0,0,0,0.25);
+  line-height: 1;
+}
+
 </style>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -877,6 +900,12 @@
   }
 
   async function initMap(){
+    const stationIcon = (temp) => L.divIcon({
+  className: 'weather-temp-icon',
+  html: `${Math.round(temp)}°`,
+  iconSize: [40, 24],
+  iconAnchor: [20, 12]
+});
     if(!window.L || !el("map")) return;
     map = L.map("map", { zoomControl: true }).setView([center.lat, center.lon], 12);
 
@@ -886,7 +915,7 @@
     }).addTo(map);
 
     pointLayer = L.layerGroup().addTo(map);
-    centreMarker = L.marker([center.lat, center.lon]).addTo(map);
+    centreMarker = L.marker([lat, lon], { icon: L.divIcon({ className: 'empty-icon' }) }).addTo(map);;
     radiusCircle = L.circle([center.lat, center.lon], { radius: milesToMeters(RADIUS_MILES), weight:1, opacity:0.8, fillOpacity:0.08 }).addTo(map);
 
     const houseIcon = L.divIcon({
@@ -972,9 +1001,10 @@
       const color = swatchForIntensity(intensity);
       const icon = conditionIcon(c.weather_code);
 
-      const m = L.circleMarker([pts[i].lat, pts[i].lon], {
-        radius: 10, color, weight: 2, fillColor: color, fillOpacity: 0.35
-      }).addTo(pointLayer);
+      const m = L.marker(
+        [pts[i].lat, pts[i].lon],
+        { icon: stationIcon(pts[i].temp) }
+        ).addTo(pointLayer);
 
       m.bindTooltip(`${icon} ${Math.round(c.temperature_2m)}°C • ${precip.toFixed(1)}mm • gust ${Math.round(gust)}mph`, {direction:"top", opacity:0.95});
     });
@@ -1040,6 +1070,7 @@
 
 </body>
 </html>
+
 
 
 
