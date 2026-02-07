@@ -391,6 +391,13 @@
 
   let map, centreMarker, radiusCircle, radarLayer, pointLayer;
   let center = loadCenter(); // {lat, lon, postcode?}
+  
+  const stationIcon = (temp) => L.divIcon({
+  className: 'weather-temp-icon',
+  html: `${Math.round(temp)}°`,
+  iconSize: [40, 24],
+  iconAnchor: [20, 12]
+});
 
   const HOUSE = { lat: 52.24461096235963, lon: -2.1438834723263196 }; // WR9 7JE
   const HORSE = { lat: 52.2377760144751, lon: -2.2180743733432244 }; // WR3 7SB
@@ -735,32 +742,29 @@
     const dayV = computeVerdict({ effective, wet, gust, period: "DAY", T });
     const nightV = computeVerdict({ effective, wet, gust, period: "NIGHT", T });
 
-    el("dayVerdict").textContent = dayV;
-    el("nightVerdict").textContent = nightV;
-    el("periodNow").textContent = isNight ? "NIGHT" : "DAY";
+  el("dayVerdict").className = `small mono ${verdictClass(dayV)}`;
+  el("nightVerdict").className = `small mono ${verdictClass(nightV)}`;
+  el("periodNow").className = `small mono ${isNight ? "warn" : "ok"}`;
 
-    el("dayVerdict").className = `small mono ${verdictClass(dayV)}`;
-    el("nightVerdict").className = `small mono ${verdictClass(nightV)}`;
-    el("periodNow").className = `small mono ${isNight ? "warn" : "ok"}`;
+  let overall = isNight ? nightV : dayV;
+  if (foalAdvice.includes("consider lightweight") || foalAdvice.includes("take action")) overall = "TAKE ACTION";
+  el("overallVerdict").textContent = overall;
+  el("overallVerdict").className = `small mono ${verdictClass(overall)}`;
 
-    let overall = isNight ? nightV : dayV;
-    if (foalAdvice.includes("consider lightweight") || foalAdvice.includes("take action")) overall = "TAKE ACTION";
-    el("overallVerdict").textContent = overall;
-    el("overallVerdict").className = `small mono ${verdictClass(overall)}`;
+  let note = "All looks normal.";
+  if (season === "summer") {
+    if (wetSoon) note = "Rain soon — check shelter options and keep an eye on chilling if wind rises.";
+    if (wet && gust >= 35) note = "Wet + windy — use the lowest/most sheltered areas for feed/turnout.";
+  } else {
+    if (gust >= T.gustMph) note = "Breezy/gusty — use sheltered areas for turnout/feeding if needed.";
+    if (wetSoon) note = "Rain likely soon — plan rugs/check shelter spots if you use them.";
+    if (rainingNow) note = "Currently wet — watch for chilling if wind picks up.";
+    if (typeof minToday === "number" && minToday <= T.frostC) note = "Frost risk — watch for icy gateways/trackways overnight.";
+  }
+  el("yardNote").textContent = note;
 
-    let note = "All looks normal.";
-    if (season === "summer") {
-      if (wetSoon) note = "Rain soon — check shelter options and keep an eye on chilling if wind rises.";
-      if (wet && gust >= 35) note = "Wet + windy — use the lowest/most sheltered areas for feed/turnout.";
-    } else {
-      if (gust >= T.gustMph) note = "Breezy/gusty — use sheltered areas for turnout/feeding if needed.";
-      if (wetSoon) note = "Rain likely soon — plan rugs/check shelter spots if you use them.";
-      if (rainingNow) note = "Currently wet — watch for chilling if wind picks up.";
-      if (typeof minToday === "number" && minToday <= T.frostC) note = "Frost risk — watch for icy gateways/trackways overnight.";
-    }
-    el("yardNote").textContent = note;
-
-    updateFoalAges();
+  updateFoalAges();
+}
   }
 
   el("refresh").addEventListener("click", refreshAll);
@@ -924,12 +928,7 @@
   }
 
   async function initMap(){
-    const stationIcon = (temp) => L.divIcon({
-  className: 'weather-temp-icon',
-  html: `${Math.round(temp)}°`,
-  iconSize: [40, 24],
-  iconAnchor: [20, 12]
-});
+
     if(!window.L || !el("map")) return;
     map = L.map("map", { zoomControl: true }).setView([center.lat, center.lon], 12);
 
@@ -1025,10 +1024,10 @@
       const color = swatchForIntensity(intensity);
       const icon = conditionIcon(c.weather_code);
 
-      const m = L.marker(
-        [pts[i].lat, pts[i].lon],
-        { icon: stationIcon(pts[i].temp) }
-        ).addTo(pointLayer);
+const m = L.marker(
+  [pts[i].lat, pts[i].lon],
+  { icon: stationIcon(c.temperature_2m) }
+).addTo(pointLayer);
 
       m.bindTooltip(`${icon} ${Math.round(c.temperature_2m)}°C • ${precip.toFixed(1)}mm • gust ${Math.round(gust)}mph`, {direction:"top", opacity:0.95});
     });
@@ -1044,7 +1043,6 @@
   function refreshAll(){
     refreshMapGeometry();
     initUI();
-    initMap();
     loadPollen();
     loadWeather();
     refreshMapPoints();
@@ -1094,6 +1092,7 @@
 
 </body>
 </html>
+
 
 
 
