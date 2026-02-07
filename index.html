@@ -627,140 +627,133 @@
     }
   }
 
-  function render(j){
-    const c = j.current;
+function render(j){
+  const c = j.current;
 
-    const season = effectiveSeason();
-    const T = thresholdsFor(season);
+  const season = effectiveSeason();
+  const T = thresholdsFor(season);
 
-    el("nowTemp").textContent = Math.round(c.temperature_2m) + "°C";
-    el("nowFeels").textContent = "Feels like " + Math.round(c.apparent_temperature) + "°C";
-    el("nowTime").textContent = fmtTime(c.time);
-    el("nowSummary").textContent = wxLabel(c.weather_code);
+  el("nowTemp").textContent = Math.round(c.temperature_2m) + "°C";
+  el("nowFeels").textContent = "Feels like " + Math.round(c.apparent_temperature) + "°C";
+  el("nowTime").textContent = fmtTime(c.time);
 
-    updateBackground(c.weather_code);
-    updateWeatherLayers(c.weather_code);
+  const sunrise = j.daily.sunrise?.[0];
+  const sunset = j.daily.sunset?.[0];
+  el("sunriseTime").textContent = sunrise ? fmtTime(sunrise) : "—";
+  el("sunsetTime").textContent = sunset ? fmtTime(sunset) : "—";
 
-    const sunrise = j.daily.sunrise?.[0];
-    const sunset = j.daily.sunset?.[0];
-    el("sunriseTime").textContent = sunrise ? fmtTime(sunrise) : "—";
-    el("sunsetTime").textContent = sunset ? fmtTime(sunset) : "—";
+  el("windSpeed").textContent = Math.round(c.wind_speed_10m) + " mph";
+  el("windGust").textContent = "Gusts " + Math.round(c.wind_gusts_10m) + " mph";
+  const gust = c.wind_gusts_10m;
 
-    el("windSpeed").textContent = Math.round(c.wind_speed_10m) + " mph";
-    el("windGust").textContent = "Gusts " + Math.round(c.wind_gusts_10m) + " mph";
-    const gust = c.wind_gusts_10m;
+  el("windAlert").innerHTML =
+    gust >= T.gustMph
+      ? `<span class="bad">⚠️ Gusts above ${T.gustMph} mph likely.</span>`
+      : `<span class="ok">✓ Gusts below ${T.gustMph} mph threshold.</span>`;
 
-    el("windAlert").innerHTML =
-      gust >= T.gustMph
-        ? `<span class="bad">⚠️ Gusts above ${T.gustMph} mph likely.</span>`
-        : `<span class="ok">✓ Gusts below ${T.gustMph} mph threshold.</span>`;
+  el("rainNow").textContent = (c.precipitation ?? 0) + " mm now";
 
-    el("rainNow").textContent = (c.precipitation ?? 0) + " mm now";
+  const now = new Date(c.time);
+  const times = j.hourly.time.map(t => new Date(t));
+  let idx = times.findIndex(d => d >= now);
+  if (idx < 0) idx = 0;
 
-    const now = new Date(c.time);
-    const times = j.hourly.time.map(t => new Date(t));
-    let idx = times.findIndex(d => d >= now);
-    if (idx < 0) idx = 0;
+  const pop = j.hourly.precipitation_probability?.[idx] ?? 0;
+  const mm  = j.hourly.precipitation?.[idx] ?? 0;
+  el("rainSoon").textContent = `Next hour: ${mm} mm • ${pop}% chance`;
 
-    const pop = j.hourly.precipitation_probability?.[idx] ?? 0;
-    const mm  = j.hourly.precipitation?.[idx] ?? 0;
-    el("rainSoon").textContent = `Next hour: ${mm} mm • ${pop}% chance`;
+  const wetSoon = (pop >= T.rainProbNextHour) || (mm >= T.rainMmNextHour);
+  const rainingNow = (c.precipitation ?? 0) >= 0.2;
+  const wet = wetSoon || rainingNow;
 
-    const wetSoon = (pop >= T.rainProbNextHour) || (mm >= T.rainMmNextHour);
-    const rainingNow = (c.precipitation ?? 0) >= 0.2;
-    const wet = wetSoon || rainingNow;
-
-    const minToday = j.daily.temperature_2m_min?.[0];
-    el("frostRisk").innerHTML =
-      (season === "winter" && typeof minToday === "number" && minToday <= T.frostC)
-        ? `<span class="bad">❄️ Frost risk: low ${Math.round(minToday)}°C (≤ ${T.frostC}°C)</span>`
-        : `<span class="ok">✓ Frost unlikely.</span>`;
-
-    const next = new Date(Date.now() + 10 * 60000);
-    el("nextUpdatePill").textContent = "Next update: " + next.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});
-
-    const feelsC = c.apparent_temperature;
-    const windMph = c.wind_speed_10m;
-
-    let effective = feelsC;
-    if (windMph >= 25) effective -= 0.5;
-    if (windMph >= 35) effective -= 0.5;
-    if (wetSoon) effective -= 1.5;
-    if (rainingNow) effective -= 1;
-
-    let rug = "none";
-    if (effective <= T.mareLightAt) rug = "lightweight";
-    if (effective <= T.mareMediumAt) rug = "medium";
-    if (feelsC >= 5 && rug === "medium") rug = "lightweight";
-    if (season === "summer") rug = "none";
-
-    el("rugSuggestion").textContent = `${rug} (effective ${effective.toFixed(1)}°C • ${season})`;
-
-    let foalAdvice = "none needed";
-    if (season === "winter") {
-      if (wet && effective <= T.foalMonitorWetAt) foalAdvice = "monitor — wet and chilly";
-      if (effective <= T.foalMonitorColdAt) foalAdvice = "monitor — cold conditions";
-      if (wet && effective <= T.foalConsiderAt) foalAdvice = "consider lightweight if exposed";
-    } else {
-      if (wet && gust >= 35) foalAdvice = "monitor — wet + windy";
-      if (wet && gust >= 45) foalAdvice = "take action — get them into best shelter";
-    }
-    el("foalNote").textContent = foalAdvice;
-
-    let isNight = false;
-    if (sunrise && sunset) {
-      const sr = new Date(sunrise);
-      const ss = new Date(sunset);
-      isNight = (now < sr) || (now > ss);
-    } else {
-      const h = now.getHours();
-      isNight = (h >= 19 || h < 7);
-    }
-
-    const dayV = computeVerdict({ effective, wet, gust, period: "DAY", T });
-    const nightV = computeVerdict({ effective, wet, gust, period: "NIGHT", T });
-
-    el("dayVerdict").textContent = dayV;
-    el("nightVerdict").textContent = nightV;
-    el("periodNow").textContent = isNight ? "NIGHT" : "DAY";
-
-    el("dayVerdict").className = `small mono ${verdictClass(dayV)}`;
-    el("nightVerdict").className = `small mono ${verdictClass(nightV)}`;
-    el("periodNow").className = `small mono ${isNight ? "warn" : "ok"}`;
-
-    let overall = isNight ? nightV : dayV;
-    if (foalAdvice.includes("consider lightweight") || foalAdvice.includes("take action")) overall = "TAKE ACTION";
-    el("overallVerdict").textContent = overall;
-    el("overallVerdict").className = `small mono ${verdictClass(overall)}`;
-
-    let note = "All looks normal.";
-    if (season === "summer") {
-      if (wetSoon) note = "Rain soon — check shelter options and keep an eye on chilling if wind rises.";
-      if (wet && gust >= 35) note = "Wet + windy — use the lowest/most sheltered areas for feed/turnout.";
-    } else {
-      if (gust >= T.gustMph) note = "Breezy/gusty — use sheltered areas for turnout/feeding if needed.";
-      if (wetSoon) note = "Rain likely soon — plan rugs/check shelter spots if you use them.";
-      if (rainingNow) note = "Currently wet — watch for chilling if wind picks up.";
-      if (typeof minToday === "number" && minToday <= T.frostC) note = "Frost risk — watch for icy gateways/trackways overnight.";
-    }
-    el("yardNote").textContent = note;
-
-    updateFoalAges();
+  // 🔵 DISPLAY OVERRIDE: force rain visuals if it's wet
+  let displayCode = c.weather_code;
+  if (rainingNow || wetSoon) {
+    displayCode = 61; // "Rain"
   }
 
-  el("refresh").addEventListener("click", refreshAll);
-  el("print").addEventListener("click", () => window.print());
+  // Use displayCode everywhere the user *sees* the condition
+  el("nowSummary").textContent = wxLabel(displayCode);
+  updateBackground(displayCode);
+  updateWeatherLayers(displayCode);
 
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(console.error);
-    });
+  const minToday = j.daily.temperature_2m_min?.[0];
+  el("frostRisk").innerHTML =
+    (season === "winter" && typeof minToday === "number" && minToday <= T.frostC)
+      ? `<span class="bad">❄️ Frost risk: low ${Math.round(minToday)}°C (≤ ${T.frostC}°C)</span>`
+      : `<span class="ok">✓ Frost unlikely.</span>`;
+
+  const next = new Date(Date.now() + 10 * 60000);
+  el("nextUpdatePill").textContent = "Next update: " + next.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});
+
+  const feelsC = c.apparent_temperature;
+  const windMph = c.wind_speed_10m;
+
+  let effective = feelsC;
+  if (windMph >= 25) effective -= 0.5;
+  if (windMph >= 35) effective -= 0.5;
+  if (wetSoon) effective -= 1.5;
+  if (rainingNow) effective -= 1;
+
+  let rug = "none";
+  if (effective <= T.mareLightAt) rug = "lightweight";
+  if (effective <= T.mareMediumAt) rug = "medium";
+  if (feelsC >= 5 && rug === "medium") rug = "lightweight";
+  if (season === "summer") rug = "none";
+
+  el("rugSuggestion").textContent = `${rug} (effective ${effective.toFixed(1)}°C • ${season})`;
+
+  let foalAdvice = "none needed";
+  if (season === "winter") {
+    if (wet && effective <= T.foalMonitorWetAt) foalAdvice = "monitor — wet and chilly";
+    if (effective <= T.foalMonitorColdAt) foalAdvice = "monitor — cold conditions";
+    if (wet && effective <= T.foalConsiderAt) foalAdvice = "consider lightweight if exposed";
+  } else {
+    if (wet && gust >= 35) foalAdvice = "monitor — wet + windy";
+    if (wet && gust >= 45) foalAdvice = "take action — get them into best shelter";
+  }
+  el("foalNote").textContent = foalAdvice;
+
+  let isNight = false;
+  if (sunrise && sunset) {
+    const sr = new Date(sunrise);
+    const ss = new Date(sunset);
+    isNight = (now < sr) || (now > ss);
+  } else {
+    const h = now.getHours();
+    isNight = (h >= 19 || h < 7);
   }
 
-  dateAwareText();
-  loadMode();
+  const dayV = computeVerdict({ effective, wet, gust, period: "DAY", T });
+  const nightV = computeVerdict({ effective, wet, gust, period: "NIGHT", T });
+
+  el("dayVerdict").textContent = dayV;
+  el("nightVerdict").textContent = nightV;
+  el("periodNow").textContent = isNight ? "NIGHT" : "DAY";
+
+  el("dayVerdict").className = `small mono ${verdictClass(dayV)}`;
+  el("nightVerdict").className = `small mono ${verdictClass(nightV)}`;
+  el("periodNow").className = `small mono ${isNight ? "warn" : "ok"}`;
+
+  let overall = isNight ? nightV : dayV;
+  if (foalAdvice.includes("consider lightweight") || foalAdvice.includes("take action")) overall = "TAKE ACTION";
+  el("overallVerdict").textContent = overall;
+  el("overallVerdict").className = `small mono ${verdictClass(overall)}`;
+
+  let note = "All looks normal.";
+  if (season === "summer") {
+    if (wetSoon) note = "Rain soon — check shelter options and keep an eye on chilling if wind rises.";
+    if (wet && gust >= 35) note = "Wet + windy — use the lowest/most sheltered areas for feed/turnout.";
+  } else {
+    if (gust >= T.gustMph) note = "Breezy/gusty — use sheltered areas for turnout/feeding if needed.";
+    if (wetSoon) note = "Rain likely soon — plan rugs/check shelter spots if you use them.";
+    if (rainingNow) note = "Currently wet — watch for chilling if wind picks up.";
+    if (typeof minToday === "number" && minToday <= T.frostC) note = "Frost risk — watch for icy gateways/trackways overnight.";
+  }
+  el("yardNote").textContent = note;
+
   updateFoalAges();
-
+}
   async function loadPollen(){
     const url =
       `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${center.lat}&longitude=${center.lon}` +
@@ -1105,5 +1098,6 @@
 </script>
 </body>
 </html>
+
 
 
