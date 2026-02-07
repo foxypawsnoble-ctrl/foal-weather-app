@@ -156,18 +156,24 @@
       background: radial-gradient(circle at top right, rgba(255,255,200,0.6), transparent 60%);
       transition: opacity 0.8s ease;
     }
+.cloud-puff {
+  position: absolute;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(255,255,255,0.25),
+    rgba(255,255,255,0.05) 60%,
+    transparent 100%
+  );
+  filter: blur(12px);
+  border-radius: 50%;
+  animation: cloudDrift2 linear infinite;
+}
 
-    #cloudLayer {
-      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><circle cx="300" cy="200" r="200" fill="white" opacity="0.05"/></svg>');
-      background-size: 120% 120%;
-      animation: cloudDrift 30s linear infinite;
-      transition: opacity 1.2s ease;
-    }
+@keyframes cloudDrift2 {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-40vw); }
+}
 
-    @keyframes cloudDrift {
-      from { background-position: 0 0; }
-      to { background-position: -200px -100px; }
-    }
 
     .empty-icon {
       background: none !important;
@@ -1070,6 +1076,32 @@
   }
 })();
 </script>
+<script>
+(function () {
+  const layer = document.getElementById("cloudLayer");
+  const CLOUDS = 18; // adjust density
 
+  for (let i = 0; i < CLOUDS; i++) {
+    const c = document.createElement("div");
+    c.className = "cloud-puff";
+
+    const size = 120 + Math.random() * 180; // px
+    const top = Math.random() * 80; // vh
+    const left = Math.random() * 100; // vw
+    const opacity = 0.05 + Math.random() * 0.12;
+    const drift = 40 + Math.random() * 60; // seconds
+
+    c.style.width = size + "px";
+    c.style.height = size * 0.6 + "px";
+    c.style.top = top + "vh";
+    c.style.left = left + "vw";
+    c.style.opacity = opacity;
+    c.style.animationDuration = drift + "s";
+
+    layer.appendChild(c);
+  }
+})();
+</script>
 </body>
 </html>
+
