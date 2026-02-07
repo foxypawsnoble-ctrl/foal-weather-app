@@ -160,18 +160,19 @@
   position: absolute;
   background: radial-gradient(
     circle at 40% 40%,
-    rgba(255,255,255,0.25),
-    rgba(255,255,255,0.05) 60%,
+    rgba(255,255,255,0.45),
+    rgba(255,255,255,0.12) 60%,
     transparent 100%
   );
-  filter: blur(12px);
+  filter: blur(18px);
   border-radius: 50%;
   animation: cloudDrift2 linear infinite;
+  mix-blend-mode: screen;
 }
 
 @keyframes cloudDrift2 {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-40vw); }
+  from { transform: translateX(0) translateY(0); }
+  to   { transform: translateX(-50vw) translateY(-2vh); }
 }
 
 
@@ -1079,20 +1080,20 @@
 <script>
 (function () {
   const layer = document.getElementById("cloudLayer");
-  const CLOUDS = 18; // adjust density
+  const CLOUDS = 24; // increased density
 
   for (let i = 0; i < CLOUDS; i++) {
     const c = document.createElement("div");
     c.className = "cloud-puff";
 
-    const size = 120 + Math.random() * 180; // px
-    const top = Math.random() * 80; // vh
-    const left = Math.random() * 100; // vw
-    const opacity = 0.05 + Math.random() * 0.12;
-    const drift = 40 + Math.random() * 60; // seconds
+    const size = 180 + Math.random() * 260; // larger clouds
+    const top = Math.random() * 80;         // vertical spread
+    const left = Math.random() * 100;       // starting position
+    const opacity = 0.12 + Math.random() * 0.25; // stronger visibility
+    const drift = 50 + Math.random() * 70;  // slower, cinematic drift
 
     c.style.width = size + "px";
-    c.style.height = size * 0.6 + "px";
+    c.style.height = size * 0.65 + "px";
     c.style.top = top + "vh";
     c.style.left = left + "vw";
     c.style.opacity = opacity;
@@ -1104,4 +1105,5 @@
 </script>
 </body>
 </html>
+
 
