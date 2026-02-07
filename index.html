@@ -100,9 +100,17 @@
 }
 
 #rainLayer {
-  background-image: linear-gradient(120deg, rgba(255,255,255,0.25) 2px, transparent 2px);
-  background-size: 2px 20px;
-  animation: rainAnim 0.4s linear infinite;
+  background-image:
+    linear-gradient(120deg, rgba(255,255,255,0.08) 2px, transparent 2px),
+    linear-gradient(120deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 2px 30px, 1px 20px;
+  animation: rainAnim 0.5s linear infinite;
+  opacity: 0;
+}
+
+@keyframes rainAnim {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: -15px 30px, -10px 20px; }
 }
 
 @keyframes rainAnim {
@@ -956,5 +964,6 @@
 </script>
 </body>
 </html>
+
 
 
