@@ -109,18 +109,64 @@
       transition: opacity 0.6s ease;
     }
 
-    #rainLayer {
-      background-image:
-        linear-gradient(120deg, rgba(255,255,255,0.08) 2px, transparent 2px),
-        linear-gradient(120deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-      background-size: 2px 30px, 1px 20px;
-      animation: rainAnim 0.5s linear infinite;
-    }
+/* Ripple rain effect */
+#rainLayer {
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+}
 
-    @keyframes rainAnim {
-      from { background-position: 0 0, 0 0; }
-      to { background-position: -15px 30px, -10px 20px; }
-    }
+#rainLayer::before,
+#rainLayer::after {
+  content: "";
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background-repeat: no-repeat;
+  animation: rippleRain 6s linear infinite;
+  opacity: 0.15;
+}
+
+/* Two layers of ripples for depth */
+#rainLayer::after {
+  animation-duration: 8s;
+  opacity: 0.10;
+}
+
+@keyframes rippleRain {
+  0% {
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%),
+      radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 60%),
+      radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%);
+    background-size: 120px 120px, 180px 180px, 150px 150px;
+    background-position:
+      20% 30%,
+      70% 60%,
+      40% 80%;
+  }
+
+  50% {
+    background-size: 200px 200px, 260px 260px, 230px 230px;
+    background-position:
+      25% 35%,
+      65% 55%,
+      45% 75%;
+  }
+
+  100% {
+    background-size: 300px 300px, 360px 360px, 330px 330px;
+    background-position:
+      30% 40%,
+      60% 50%,
+      50% 70%;
+  }
+}
 
     #snowLayer {
       background-image: radial-gradient(white 1px, transparent 1px);
@@ -968,6 +1014,7 @@
 </script>
 </body>
 </html>
+
 
 
 
